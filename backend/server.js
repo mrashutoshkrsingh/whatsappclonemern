@@ -2,9 +2,10 @@ import express from "express";
 import mongoose from "mongoose";
 import Messages from "./dbMessages.js";
 import Pusher from "pusher";
+import cors from "cors";
 const app = express();
 
-const port = process.env.PORT || 9002;
+const port = process.env.PORT || 9000;
 
 const pusher = new Pusher({
   appId: "1204339",
@@ -14,7 +15,14 @@ const pusher = new Pusher({
   useTLS: true,
 });
 
+app.use(cors());
 app.use(express.json());
+
+app.use((_, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "*");
+  next();
+});
 
 const connection_uri =
   "mongodb+srv://quickdukanprod:quickdukan@bitashutosh@cluster0.5slcr.mongodb.net/vattendtest?retryWrites=true&w=majority" ||
@@ -47,6 +55,8 @@ mongoose.connection.once("open", () => {
       pusher.trigger("messages", "inserted", {
         name: messageDetails.name,
         message: messageDetails.message,
+        timestamp: messageDetails.timestamp,
+        received: messageDetails.received,
       });
     } else {
       console.log("Error triggering Pusher");
@@ -61,6 +71,12 @@ app.post("/messages/new", (req, res) => {
   Messages.create(dbMessage, (err, data) => {
     if (err) return res.status(500).send(err);
     res.status(201).send(data);
+  });
+});
+app.get("/messages/sync", (req, res) => {
+  Messages.find({}, (err, data) => {
+    if (err) return res.status(500).send(err);
+    res.status(200).send(data);
   });
 });
 
